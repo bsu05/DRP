@@ -48,9 +48,6 @@ rownames(stats_mat) <- playoff_teams
 n_teams <- length(playoff_teams)
 team_names <- playoff_teams
 
-
-
-
 SimulateGame <- function(t1, t2, stats){
   OT = 0
   
@@ -98,8 +95,7 @@ SimulateGame <- function(t1, t2, stats){
   }
   return(list(scores = c(team1score, team2score, team1score < team2score), stats = stats))
 }
-test <- SimulateGame(1, 2, stats_mat)
-test$scores[3]
+
 SimulateSeries <- function(t1, t2, stats){
   win_t1 <- 0
   win_t2 <- 0
@@ -132,10 +128,6 @@ SimulateSeries <- function(t1, t2, stats){
 
 }
 
-SimulateSeries(1, 2, stats_mat)
-
-
-
 SimulatePlayoffs <- function(iterations){
   win_counts <- rep(0, n_teams)
   for(i in 1:iterations){
@@ -147,23 +139,18 @@ SimulatePlayoffs <- function(iterations){
                                current_stats)
       current_stats <- winner$stats
       current_matchups <- c(current_matchups, reverse_team_map[winner$winner])
-      #if(team_map[matchups[2*j - 1]] == 1 | team_map[matchups[2*j]] == 1){
-        #print(current_stats[1, ])
-      #}
     }
     champion <- SimulateSeries(team_map[current_matchups[29]], team_map[current_matchups[30]], current_stats)
     win_counts[champion$winner] <- win_counts[champion$winner] + 1
   }
   results_df <- data.frame(
-    Team = team_map[team_names],
+    Team = team_names,
     StanleyCupWins = win_counts,
     WinPercentage = (win_counts / iterations) * 100
   )
   
   return(results_df[order(-results_df$StanleyCupWins), ])
 }
-
-SimulatePlayoffs(10)
 
 addWorksheet(wb, date)
 writeData(wb, date, SimulatePlayoffs(10000))
