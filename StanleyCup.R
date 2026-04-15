@@ -20,18 +20,36 @@ team_map_names <- c(
   "St. Louis Blues" = "STL", "Chicago Blackhawks" = "CHI", "New York Rangers" = "NYR",
   "Calgary Flames" = "CGY", "Vancouver Canucks" = "VAN"
 )
-stats2 <- stats[, c("Team", "GP", "W", "L", "OT", "P", "GF", "GA")]
-stats2$Code <- team_map_names[stats2$Team]
 
 
-team_names <- stats2$Code
-n_teams <- length(team_names)
-team_map <- 1:n_teams
-names(team_map) <- team_names
-reverse_team_map <- names(team_map)
+stats$Code <- team_map_names[stats$Team]
+
+matchups <- c("COL","LAK", 
+              "DAL","MIN",
+              "VGK","UTA",
+              "EDM","ANA",
+              "BUF","BOS",
+              "TBL","MTL",
+              "CAR", "OTT",
+              "PIT", "PHI")
+
+
+playoff_teams <- matchups  # 16 unique teams in order
+team_map <- 1:length(playoff_teams)
+names(team_map) <- playoff_teams
+reverse_team_map <- playoff_teams
 names(reverse_team_map) <- team_map
 
-stats_mat <- as.matrix(stats2[, c("GP", "GF", "GA", "P")])
+stats_mat <- as.matrix(stats[match(playoff_teams, stats$Code), c("GP", "GF", "GA")])
+stats_mat <- cbind(stats_mat, "POGP" = rep(0, 16), "POW" = rep(0,16))
+rownames(stats_mat) <- playoff_teams
+
+
+n_teams <- length(playoff_teams)
+team_names <- playoff_teams
+
+
+
 
 SimulateGame <- function(t1, t2, stats){
   OT = 0
@@ -78,59 +96,66 @@ SimulateGame <- function(t1, t2, stats){
     }
     
   }
-  return(team1score<team2score)
+  return(list(scores = c(team1score, team2score, team1score < team2score), stats = stats))
 }
-
-SimulateSeries <- function(t1, t2){
+test <- SimulateGame(1, 2, stats_mat)
+test$scores[3]
+SimulateSeries <- function(t1, t2, stats){
   win_t1 <- 0
   win_t2 <- 0
   while (win_t1<4 & win_t2<4) {
     #need to figure out way to continuously update stats matrix, cause it's not doing so here
-    result <- SimulateGame(t1, t2, stats_mat)
-    if(result == FALSE){
+    result <- SimulateGame(t1, t2, stats)
+    stats <- result$stats
+    scores <- result$scores
+    stats[t1, 2] <- stats[t1, 2] + scores[1]
+    stats[t1, 3] <- stats[t1, 3] + scores[2]
+    stats[t2, 2] <- stats[t2, 2] + scores[2]
+    stats[t2, 3] <- stats[t2, 3] + scores[1]
+    
+    stats[t1, 4] <- stats[t1, 4] + 1
+    stats[t2, 4] <- stats[t2, 4] + 1
+    
+    if(result$scores[3] == FALSE){
       win_t1 <- win_t1 + 1
+      stats[t1, 5] <- stats[t1, 5] + 1
     }
     else{
       win_t2 <- win_t2 + 1
+      stats[t2, 5] <- stats[t2, 5] + 1
     }
     
   }
-  if(win_t1>win_t2){return(t1)}
-  else{return(t2)}
+  if(win_t1>win_t2){winner <- t1}
+  else{winner <- t2}
+  return(list(winner = winner, stats = stats))
 
 }
 
-matchups <- c("COL","LAK", 
-              "DAL","MIN",
-              "VGK","UTA",
-              "EDM","ANA",
-              "BUF","BOS",
-              "TBL","MTL",
-              "CAR", "OTT",
-              "PIT", "PHI"
-              )
+SimulateSeries(1, 2, stats_mat)
+
+
 
 SimulatePlayoffs <- function(iterations){
   win_counts <- rep(0, n_teams)
   for(i in 1:iterations){
+    current_stats <- stats_mat
+    current_matchups <- matchups
     for(j in 1:14){
-      winner <- SimulateSeries(team_map[matchups[2*j - 1]], team_map[matchups[2*j]])
-      matchups <- c(matchups, reverse_team_map[winner])
+      winner <- SimulateSeries(team_map[current_matchups[2*j - 1]], 
+                               team_map[current_matchups[2*j]],
+                               current_stats)
+      current_stats <- winner$stats
+      current_matchups <- c(current_matchups, reverse_team_map[winner$winner])
+      #if(team_map[matchups[2*j - 1]] == 1 | team_map[matchups[2*j]] == 1){
+        #print(current_stats[1, ])
+      #}
     }
-    champion <- SimulateSeries(team_map[matchups[29]], team_map[matchups[30]])
-    win_counts[champion] <- win_counts[champion] + 1
-    matchups <- c("COL","LAK", 
-                  "DAL","MIN",
-                  "VGK","UTA",
-                  "EDM","ANA",
-                  "BUF","BOS",
-                  "TBL","MTL",
-                  "CAR", "OTT",
-                  "PIT", "PHI")
-    
+    champion <- SimulateSeries(team_map[current_matchups[29]], team_map[current_matchups[30]], current_stats)
+    win_counts[champion$winner] <- win_counts[champion$winner] + 1
   }
   results_df <- data.frame(
-    Team = team_names,
+    Team = team_map[team_names],
     StanleyCupWins = win_counts,
     WinPercentage = (win_counts / iterations) * 100
   )
@@ -138,6 +163,7 @@ SimulatePlayoffs <- function(iterations){
   return(results_df[order(-results_df$StanleyCupWins), ])
 }
 
+SimulatePlayoffs(10)
 
 addWorksheet(wb, date)
 writeData(wb, date, SimulatePlayoffs(10000))
