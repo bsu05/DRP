@@ -100,7 +100,6 @@ SimulateSeries <- function(t1, t2, stats){
   win_t1 <- 0
   win_t2 <- 0
   while (win_t1<4 & win_t2<4) {
-    #need to figure out way to continuously update stats matrix, cause it's not doing so here
     result <- SimulateGame(t1, t2, stats)
     stats <- result$stats
     scores <- result$scores
@@ -128,7 +127,7 @@ SimulateSeries <- function(t1, t2, stats){
 
 }
 
-SimulatePlayoffs <- function(iterations){
+StanleyCupOdds <- function(iterations){
   win_counts <- rep(0, n_teams)
   for(i in 1:iterations){
     current_stats <- stats_mat
@@ -153,5 +152,23 @@ SimulatePlayoffs <- function(iterations){
 }
 
 addWorksheet(wb, date)
-writeData(wb, date, SimulatePlayoffs(10000))
+writeData(wb, date, StanleyCupOdds(10000))
 saveWorkbook(wb, "StanleyCup.xlsx", overwrite = TRUE)
+
+
+SeriesOdds <- function(iterations, t1, t2, stats){
+  t1_win <- 0
+  t2_win <- 0
+  for(i in 1:10000){
+    temp_stats <- stats_mat
+    result <- SimulateSeries(t1, 12, temp_stats)
+    if(result$winner == t1){
+      t1_win <- t1_win + 1
+    }
+    else{
+      t2_win <- t2_win + 1
+    }
+  }
+  return(c(t1_win/iterations * 100, t2_win/iterations * 100))
+}
+
