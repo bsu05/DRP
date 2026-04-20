@@ -159,9 +159,9 @@ saveWorkbook(wb, "StanleyCup.xlsx", overwrite = TRUE)
 SeriesOdds <- function(iterations, t1, t2, stats){
   t1_win <- 0
   t2_win <- 0
-  for(i in 1:10000){
+  for(i in 1:iterations){
     temp_stats <- stats_mat
-    result <- SimulateSeries(t1, 12, temp_stats)
+    result <- SimulateSeries(t1, t2, temp_stats)
     if(result$winner == t1){
       t1_win <- t1_win + 1
     }
@@ -172,3 +172,4 @@ SeriesOdds <- function(iterations, t1, t2, stats){
   return(c(t1_win/iterations * 100, t2_win/iterations * 100))
 }
 
+SeriesOdds(10000, 1, 2, stats_mat)
