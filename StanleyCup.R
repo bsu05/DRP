@@ -44,6 +44,15 @@ stats_mat <- as.matrix(stats[match(playoff_teams, stats$Code), c("GP", "GF", "GA
 stats_mat <- cbind(stats_mat, "POGP" = rep(0, 16), "POW" = rep(0,16))
 rownames(stats_mat) <- playoff_teams
 
+games_won <- c(1, 0,
+               0, 1,
+               1, 0,
+               0, 0,
+               1, 0,
+               0, 1,
+               1, 0,
+               0, 1)
+
 
 n_teams <- length(playoff_teams)
 team_names <- playoff_teams
@@ -96,9 +105,7 @@ SimulateGame <- function(t1, t2, stats){
   return(list(scores = c(team1score, team2score, team1score < team2score), stats = stats))
 }
 
-SimulateSeries <- function(t1, t2, stats){
-  win_t1 <- 0
-  win_t2 <- 0
+SimulateSeries <- function(t1, t2, stats, win_t1 = 0, win_t2 = 0){
   while (win_t1<4 & win_t2<4) {
     result <- SimulateGame(t1, t2, stats)
     stats <- result$stats
@@ -132,7 +139,17 @@ StanleyCupOdds <- function(iterations){
   for(i in 1:iterations){
     current_stats <- stats_mat
     current_matchups <- matchups
-    for(j in 1:14){
+    #first round
+    for(j in 1:8){
+      winner <- SimulateSeries(team_map[current_matchups[2*j - 1]], 
+                               team_map[current_matchups[2*j]],
+                               current_stats, 
+                               games_won[2*j -1],
+                               games_won[2*j])
+      current_stats <- winner$stats
+      current_matchups <- c(current_matchups, reverse_team_map[winner$winner])
+    }
+    for(j in 9:14){
       winner <- SimulateSeries(team_map[current_matchups[2*j - 1]], 
                                team_map[current_matchups[2*j]],
                                current_stats)
@@ -155,13 +172,12 @@ addWorksheet(wb, date)
 writeData(wb, date, StanleyCupOdds(10000))
 saveWorkbook(wb, "StanleyCup.xlsx", overwrite = TRUE)
 
+StanleyCupOdds(10000)
 
-SeriesOdds <- function(iterations, t1, t2, stats){
-  t1_win <- 0
-  t2_win <- 0
+SeriesOdds <- function(iterations, t1, t2, stats, t1_win = 0, t2_win = 0){
   for(i in 1:iterations){
     temp_stats <- stats_mat
-    result <- SimulateSeries(t1, t2, temp_stats)
+    result <- SimulateSeries(t1, t2, temp_stats, t1_win, t2_win)
     if(result$winner == t1){
       t1_win <- t1_win + 1
     }
@@ -172,4 +188,4 @@ SeriesOdds <- function(iterations, t1, t2, stats){
   return(c(t1_win/iterations * 100, t2_win/iterations * 100))
 }
 
-SeriesOdds(10000, 1, 2, stats_mat)
+
